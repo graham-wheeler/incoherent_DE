@@ -18,7 +18,7 @@ install.packages("R2OpenBUGS")
 library(R2OpenBUGS)
 
 #############
-# FUnctions #
+# Functions #
 #############
 
 ptox.fn<-function(rho0,gamma,dose.vec,theta){
