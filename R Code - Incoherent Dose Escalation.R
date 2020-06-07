@@ -14,8 +14,8 @@ rm(list=ls())
 # Install packages #
 ####################
 
-install.packages("R2OpenBUGS")
-library(R2OpenBUGS)
+install.packages("dclone")
+library(dclone)
 
 #############
 # Functions #
@@ -53,9 +53,9 @@ coherence.trial.fn<-function(start.seed, numsim, numpat, alpha, strong.prior=FAL
     while(N<=numpat){
       data1<-list(Xmin=Xmin, Xmax=Xmax, theta=theta, K=N, Y=c(y.vec,NA), X=c(x.vec,NA))
       if(strong.prior==FALSE){
-        brugs<-bugs.fit(model=model1, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=NULL)
+        brugs<-bugs.fit(model=model1, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=1)
         }else{
-        brugs<-bugs.fit(model=model1strong, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=NULL)
+        brugs<-bugs.fit(model=model1strong, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=1)
         }
       t<-unlist(lapply(1:n.chains,function(z) brugs[[z]][,1]))
       ewoc.dose<-quantile(t, alpha)
@@ -75,9 +75,9 @@ coherence.trial.fn<-function(start.seed, numsim, numpat, alpha, strong.prior=FAL
       next.vec<-c(next.vec, next.dose)
       data1<-list(Xmin=Xmin, Xmax=Xmax, theta=theta, K=N+1, Y=c(y.vec[1:N],1,NA), X=c(x.vec,NA))
       if(strong.prior==FALSE){
-        brugs<-bugs.fit(model=model1, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=NULL)
+        brugs<-bugs.fit(model=model1, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=1)
         }else{
-        brugs<-bugs.fit(model=model1strong, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=NULL)
+        brugs<-bugs.fit(model=model1strong, data=data1, params=c("gamma"), n.chains=n.chains, n.iter=n.iter, n.thin=n.thin, n.burnin=n.burnin, program="openbugs", seed=1)
         }
       t<-unlist(lapply(1:n.chains,function(z) brugs[[z]][,1]))
       # array of Ntrials by Npatients by different feasibility bounds to choose next dose - used to determine incomat
@@ -105,7 +105,9 @@ scenalphas.fn<-function(scenario, alphas, ntrials, npats){
   newinco<-matrix(NA,nrow=ntrials,ncol=npats-1)
   for(i in 1:ntrials){
     for(N in 1:(npats-1)){
-      newinco[i,N]<-ifelse(max(obj$rounded.dosemat[i,N,])<obj$x.mat[i,N+1], NA, max(which(obj$rounded.dosemat[i,N,]<=obj$x.mat[i,N+1]))+1)
+      newinco[i,N]<-ifelse(max(obj$rounded.dosemat[i,N,])<obj$x.mat[i,N+1], NA, 
+                           ifelse(length(which(obj$rounded.dosemat[i,N,]<=obj$x.mat[i,N+1]))==0, 1, 
+                                  max(which(obj$rounded.dosemat[i,N,]<=obj$x.mat[i,N+1]))+1))
     }
   }
   matrix(alphas[t(newinco)],nrow=ntrials,byrow=T)
@@ -205,16 +207,16 @@ scen6<-coherence.trial.fn(start.seed = start.seed, numsim = nsims, numpat = maxp
 #################
 
 for(i in 1:num.scens){
-  assign(paste0("scen",i,"alphas"), scenalphas.fn(i,nsims,npats=maxpat))
-  assign(paste0("mean.inco",i), apply(get(paste0("scen",i,"alphas")),2,mean, na.rm=T))
-  assign(paste0("med.inco",i), apply(get(paste0("scen",i,"alphas")),2,quantile, na.rm=T, probs=0.5))
-  assign(paste0("quant",i,"low"), apply(get(paste0("scen",i,"alphas")),2,quantile, na.rm=T, probs=0.025))
-  assign(paste0("quant",i,"hi"), apply(get(paste0("scen",i,"alphas")),2,quantile, na.rm=T, probs=0.975))
-  assign(paste0("min",i), apply(get(paste0("scen",i,"alphas")),2,min, na.rm=T))
-  assign(paste0("max",i), apply(get(paste0("scen",i,"alphas")),2,max, na.rm=T))
+  assign(paste0("scen",i,"alphas"), scenalphas.fn(scenario = i, alphas = alphas, ntrials = nsims, npats = maxpat))
+  assign(paste0("mean.inco",i), apply(get(paste0("scen",i,"alphas")), 2, mean, na.rm=T))
+  assign(paste0("med.inco",i), apply(get(paste0("scen",i,"alphas")), 2, quantile, na.rm=T, probs=0.5))
+  assign(paste0("quant",i,"low"), apply(get(paste0("scen",i,"alphas")), 2, quantile, na.rm=T, probs=0.025))
+  assign(paste0("quant",i,"hi"), apply(get(paste0("scen",i,"alphas")), 2, quantile, na.rm=T, probs=0.975))
+  assign(paste0("min",i), apply(get(paste0("scen",i,"alphas")), 2, min, na.rm=T))
+  assign(paste0("max",i), apply(get(paste0("scen",i,"alphas")), 2, max, na.rm=T))
   }
 
-cuts<-seq(10,maxpat,by=10)
+cuts<-seq(10, maxpat, by = 10)
 
 par(plt=c(0.11,0.46,0.75,0.95))
 plot(2:maxpat, mean.inco1,type="l",col="black",xlab="", ylab=expression(paste(alpha[n+1]^"min")), ylim=c(minalpha,maxalpha), main="Scenario 1", las=1, bty="L")
